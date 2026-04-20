@@ -26,25 +26,27 @@ log = logging.getLogger(__name__)
 JST = timezone(timedelta(hours=9))
 
 RSS_FEEDS = {
-    # 英語メディア
-    "IEEE Spectrum Robotics":   "https://spectrum.ieee.org/feeds/blog/automaton.rss",
-    "The Robot Report":         "https://www.therobotreport.com/feed/",
-    "NVIDIA Blog":              "https://blogs.nvidia.com/feed/",
-    "MIT Technology Review":    "https://www.technologyreview.com/feed/",
-    "TechCrunch Robotics":      "https://techcrunch.com/tag/robotics/feed/",
-    "Forbes Innovation":        "https://www.forbes.com/innovation/feed/",
-    "VentureBeat AI":           "https://venturebeat.com/ai/feed/",
-    "Wired Robots":             "https://www.wired.com/feed/tag/robots/rss",
-    "Google DeepMind Blog":     "https://deepmind.google/blog/rss.xml",
-    "Meta AI Blog":             "https://ai.meta.com/blog/rss/",
-    "Microsoft Research":       "https://www.microsoft.com/en-us/research/feed/",
-    "WSJ Tech":                 "https://feeds.a.dj.com/rss/RSSWSJD.xml",
-    "Bloomberg Technology":     "https://feeds.bloomberg.com/technology/news.rss",
+    # ロボティクス・Physical AI 専門
+    "IEEE Spectrum Robotics":       "https://spectrum.ieee.org/feeds/blog/automaton.rss",
+    "The Robot Report":             "https://www.therobotreport.com/feed/",
+    "Robotics Business Review":     "https://www.roboticsbusinessreview.com/feed/",
+    "Automation World":             "https://www.automationworld.com/rss.xml",
+    "Wired Robots":                 "https://www.wired.com/feed/tag/robots/rss",
+    # 投資・ビジネス（ファンディング・M&A情報）
+    "TechCrunch Robotics":          "https://techcrunch.com/tag/robotics/feed/",
+    "TechCrunch Funding":           "https://techcrunch.com/category/fundings-exits/feed/",
+    "Bloomberg Technology":         "https://feeds.bloomberg.com/technology/news.rss",
+    "WSJ Tech":                     "https://feeds.a.dj.com/rss/RSSWSJD.xml",
+    "Forbes Innovation":            "https://www.forbes.com/innovation/feed/",
+    # テック企業（Physical AI関連）
+    "NVIDIA Blog":                  "https://blogs.nvidia.com/feed/",
+    "MIT Technology Review":        "https://www.technologyreview.com/feed/",
+    "VentureBeat AI":               "https://venturebeat.com/ai/feed/",
     # 日本語メディア
-    "マイナビ ロボット":        "https://news.mynavi.jp/rss/techplus/robot/index_rss20.xml",
-    "ITmedia AI+":              "https://rss.itmedia.co.jp/rss/2.0/ait.xml",
-    "ロボスタ":                 "https://robosta.net/feed/",
-    "日経クロステック":         "https://xtech.nikkei.com/rss/index.rdf",
+    "ロボスタ":                     "https://robosta.net/feed/",
+    "マイナビ ロボット":            "https://news.mynavi.jp/rss/techplus/robot/index_rss20.xml",
+    "日経クロステック":             "https://xtech.nikkei.com/rss/index.rdf",
+    "ITmedia AI+":                  "https://rss.itmedia.co.jp/rss/2.0/ait.xml",
 }
 
 
@@ -94,48 +96,72 @@ def curate_and_summarize(articles: list[dict]) -> str:
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=3000,
+        max_tokens=3500,
         system=(
-            "あなたは住友商事の秘書が経営層向けに配信する「Physical AI デイリーニュース」の編集者です。"
-            "専門的な内容を正確に、かつ経営判断に役立つ視点で日本語にまとめてください。"
+            "あなたはベンチャーキャピタル・経営層向けに「Physical AI デイリーニュース」を編集する専門家です。"
+            "投資・事業開発・技術動向の観点から、経営判断に直結する情報を正確かつ簡潔な日本語でまとめてください。"
         ),
         messages=[{
             "role": "user",
-            "content": f"""以下は {today_str} に収集した世界中のテクノロジーニュースです。
+            "content": f"""以下は {today_str} に収集した世界中のニュース記事です。
 
 {articles_block}
 
-【指示】
-Physical AI（ロボティクス、具現化AI、自律システム、AI搭載の物理デバイス、製造・物流・医療・農業へのAI×ロボット応用）に関連する記事を厳選し、以下の形式で日本語メールを作成してください。
+【対象分野】以下の分野のみを対象とする：
+✅ Physical AI（物理世界で動くAI）
+✅ Humanoid Robot（ヒューマノイドロボット）
+✅ Robotics（ロボティクス全般）
+✅ Embedded AI（組み込みAI・エッジAI）
+✅ Automation（産業・物流・医療・農業の自動化）
+
+【除外】以下は対象外：
+❌ 生成AI（ChatGPT、LLM、画像生成、テキスト生成など純粋なソフトウェアAI）
+❌ Physical AIと無関係なソフトウェア・クラウド・サービス系ニュース
+
+【優先順位】以下の順で重要度を判定：
+1. 💰 投資・資金調達（ファンディングラウンド、金額、投資家）
+2. 🤝 M&A・買収・合併・パートナーシップ
+3. 🚀 製品発表・技術ブレークスルー（商業インパクトが大きいもの）
+4. 📊 市場動向・規制・業界再編
+
+以下の形式で日本語レポートを作成してください：
 
 ---
-# ⚙️ Physical AI デイリーニュース｜{today_str}
+# 🤖 Physical AI デイリーニュース｜{today_str}
 
-## 🔝 本日のトップニュース
+## 💰 投資・M&A・パートナーシップ
+（該当ニュースがあれば最優先で掲載。なければこのセクションは省略）
 
 ### 1. [日本語タイトル]
 - **メディア**: [ソース名]
-- **要約**: [経営層向けに3〜4文。数字・企業名・影響度を明記]
-- **ビジネス示唆**: [住友商事のビジネスへの関連・示唆を1文]
+- **概要**: [何が起きたか。金額・企業名・規模を必ず明記。3文以内]
+- **インパクト**: [業界・市場への影響を1文]
 - 🔗 [URL]
 
-（トップニュースは3〜5件、同じ形式で）
+---
+
+## 🚀 技術・製品ニュース
+
+### 1. [日本語タイトル]
+- **メディア**: [ソース名]
+- **概要**: [技術的・商業的に何が重要か。3文以内]
+- **インパクト**: [なぜ重要かを1文]
+- 🔗 [URL]
+
+（各セクション最大5件まで）
 
 ---
 
 ## 📌 その他の注目動向
-- **[タイトル日本語]**（[ソース]）: [1文要約] 🔗 [URL]
-
-（3〜7件）
+- **[タイトル]**（[ソース]）: [1文] 🔗 [URL]
 
 ---
 
 ## 📊 本日のまとめ
-[業界トレンドと住友商事が注目すべき点を4〜5文で総括]
+[Physical AI業界全体のトレンドを4〜5文で。投資家・経営層が注目すべき点を中心に]
 
 ---
-*配信: Physical AI News Agent | {today_str} 07:00 JST*
----"""
+*Physical AI News Agent | {today_str} 07:00 JST*"""
         }]
     )
 
