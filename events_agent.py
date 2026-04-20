@@ -32,16 +32,18 @@ def search_events() -> list[dict]:
     week_str = today_pst.strftime("%B %Y")
 
     queries = [
-        f"San Jose toddler dance music class 3 year old {week_str}",
-        f"San Jose kids swimming pool class toddler {week_str}",
-        f"San Jose Bay Area festival family kids {week_str}",
-        f"San Jose children art class toddler creative {week_str}",
-        f"San Jose kids gardening nature program toddler {week_str}",
-        f"San Jose public library story time toddler {week_str}",
-        f"Happy Hollow Park Zoo San Jose events {week_str}",
-        f"Bay Area 3 year old educational activities {week_str}",
-        "Children's Discovery Museum San Jose upcoming events",
-        f"San Jose parks recreation kids music dance class {week_str}",
+        f"Bay Area toddler dance music class 3 year old {week_str}",
+        f"Bay Area kids swimming pool lesson toddler {week_str}",
+        f"Bay Area festival fair family kids outdoor {week_str}",
+        f"Bay Area children art craft class toddler {week_str}",
+        f"Bay Area kids gardening nature outdoor program {week_str}",
+        f"Bay Area public library story time toddler {week_str}",
+        f"Silicon Valley toddler educational activities {week_str}",
+        f"San Francisco Oakland Palo Alto kids events toddler {week_str}",
+        "Children's Discovery Museum San Jose events",
+        "Exploratorium San Francisco kids family events",
+        "Bay Area kids museum family activities toddler",
+        f"Santa Clara Sunnyvale Cupertino kids events {week_str}",
     ]
 
     results = []
@@ -96,7 +98,7 @@ def curate_events(results: list[dict]) -> str:
 
 【条件】
 - 対象: 3歳の女の子（幼児・トドラー向け）
-- 場所: San Jose およびBay Area近郊（車で30分以内）
+- 場所: Bay Area全域（San Jose, San Francisco, Oakland, Palo Alto, Santa Clara, Sunnyvale, Cupertino, Fremont, Mountain View など）
 - 優先: Educational（学習・体験・創造）かつ楽しいもの
 - 特に重視する分野:
   🎵 音楽（Music class、ミュージックタイム）
