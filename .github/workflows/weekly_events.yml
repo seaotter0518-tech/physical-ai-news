@@ -1,0 +1,32 @@
+name: San Jose Kids Weekly Events
+
+on:
+  schedule:
+    # 毎週水曜 7:00 JST = 火曜 22:00 UTC
+    - cron: "0 22 * * 2"
+  workflow_dispatch: # 手動実行ボタン
+
+jobs:
+  send-events:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run events agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        run: python events_agent.py
