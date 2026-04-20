@@ -31,6 +31,8 @@ RSS_FEEDS = {
     "The Robot Report":             "https://www.therobotreport.com/feed/",
     "Robotics Business Review":     "https://www.roboticsbusinessreview.com/feed/",
     "Automation World":             "https://www.automationworld.com/rss.xml",
+    "Control Engineering":          "https://www.controleng.com/rss",
+    "IndustryWeek":                 "https://www.industryweek.com/rss/all",
     "Wired Robots":                 "https://www.wired.com/feed/tag/robots/rss",
     # 投資・ビジネス（ファンディング・M&A情報）
     "TechCrunch Robotics":          "https://techcrunch.com/tag/robotics/feed/",
@@ -210,7 +212,12 @@ def send_email(subject: str, html: str, plain: str) -> None:
 def main() -> None:
     log.info("=== Physical AI News Agent 起動 ===")
 
-    articles = fetch_articles(hours=24)
+    # 月曜日は週末分（78時間）、火〜金は24時間
+    today_jst = datetime.now(tz=JST)
+    hours = 78 if today_jst.weekday() == 0 else 24
+    log.info(f"取得期間: 過去{hours}時間（{['月','火','水','木','金','土','日'][today_jst.weekday()]}曜日）")
+
+    articles = fetch_articles(hours=hours)
     if not articles:
         log.error("記事が取得できませんでした")
         sys.exit(1)
