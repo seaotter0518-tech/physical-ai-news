@@ -69,6 +69,9 @@ SEARCH_QUERIES = [
     "humanoid robot funding acquisition partnership news 2026",
     "Physical AI embodied AI startup investment 2026",
     "Figure 1X Agility Apptronik Boston Dynamics robot news 2026",
+    "industrial automation AI robot deployment news 2026",
+    "robot warehouse logistics healthcare agriculture news 2026",
+    "NVIDIA Isaac robotics platform news 2026",
 ]
 
 
@@ -139,7 +142,9 @@ def curate_and_summarize(articles: list[dict]) -> str:
         for i, a in enumerate(articles)
     )
 
-    today_str = datetime.now(tz=JST).strftime("%Y年%m月%d日")
+    now_jst = datetime.now(tz=JST)
+    today_str = now_jst.strftime("%Y年%m月%d日")
+    delivered_at = now_jst.strftime("%Y年%m月%d日 %H:%M JST")
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -171,12 +176,16 @@ def curate_and_summarize(articles: list[dict]) -> str:
 3. 🚀 製品発表・技術ブレークスルー
 4. 📊 市場動向・規制・業界再編
 
-【重要】合計10件前後のニュースを掲載すること。記事が多い場合は重要度順に選別。
+【重要】
+- 合計10〜15件のニュースを必ず掲載すること
+- 記事が少ない場合は、Robotics・Automation・AIハードウェア関連も広めに含める
+- 件数を優先し、多少関連性が薄くても物理的なAI・自動化に関係するものは含める
 
 以下の形式で作成してください：
 
 ---
 # 🤖 Physical AI デイリーニュース｜{today_str}
+📅 配信: {delivered_at}
 
 ## 💰 投資・M&A・パートナーシップ
 （該当があれば最優先。最大5件）
@@ -204,7 +213,7 @@ def curate_and_summarize(articles: list[dict]) -> str:
 [トレンドと経営層が注目すべき点を4〜5文で総括]
 
 ---
-*Physical AI News Agent | {today_str} 07:00 JST*"""
+*配信日時: {delivered_at}*"""
         }]
     )
 
