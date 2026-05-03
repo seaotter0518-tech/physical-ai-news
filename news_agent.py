@@ -277,11 +277,15 @@ def main() -> None:
     log.info(f"合計: {len(articles)} 件")
     summary = curate_and_summarize(articles)
 
-    today = datetime.now(tz=JST).strftime("%Y年%m月%d日")
+    now_jst = datetime.now(tz=JST)
+    today = now_jst.strftime("%Y年%m月%d日")
+    delivered_at = now_jst.strftime("%Y年%m月%d日（%a） %H:%M JST")
+
+    header = f"📅 配信日時: {delivered_at}\n\n"
     send_email(
         subject=f"⚙️ Physical AI デイリーニュース｜{today}",
-        html=to_html(summary),
-        plain=summary,
+        html=to_html(header + summary),
+        plain=header + summary,
     )
     log.info("=== 完了 ===")
 
