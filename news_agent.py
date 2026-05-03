@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Physical AI Daily News Agent
-住友商事 経営層向け Physical AI デイリーニュース配信システム
+Presidio Ventures 経営層向け Physical AI デイリーニュース配信システム
 """
 
 import os
@@ -11,10 +11,10 @@ import re
 from datetime import datetime, timezone, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
 
 import feedparser
 import anthropic
+from ddgs import DDGS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,20 +30,30 @@ RSS_FEEDS = {
     "IEEE Spectrum Robotics":       "https://spectrum.ieee.org/feeds/blog/automaton.rss",
     "The Robot Report":             "https://www.therobotreport.com/feed/",
     "Robotics Business Review":     "https://www.roboticsbusinessreview.com/feed/",
+    "New Atlas Robotics":           "https://newatlas.com/robotics/rss/",
+    "The Verge Robots":             "https://www.theverge.com/rss/robot/index.xml",
     "Automation World":             "https://www.automationworld.com/rss.xml",
     "Control Engineering":          "https://www.controleng.com/rss",
     "IndustryWeek":                 "https://www.industryweek.com/rss/all",
     "Wired Robots":                 "https://www.wired.com/feed/tag/robots/rss",
-    # 投資・ビジネス（ファンディング・M&A情報）
+    # 信頼できる主要メディア（優先）
+    "Bloomberg Technology":         "https://feeds.bloomberg.com/technology/news.rss",
+    "Bloomberg Business":           "https://feeds.bloomberg.com/businessweek/news.rss",
+    "WSJ Tech":                     "https://feeds.a.dj.com/rss/RSSWSJD.xml",
+    "WSJ Business":                 "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",
+    "Forbes Innovation":            "https://www.forbes.com/innovation/feed/",
+    "Forbes AI":                    "https://www.forbes.com/ai/feed/",
+    "Nikkei Asia":                  "https://asia.nikkei.com/rss/feed/nar",
+    "Financial Times Tech":         "https://www.ft.com/technology?format=rss",
+    # 投資・スタートアップ
     "TechCrunch Robotics":          "https://techcrunch.com/tag/robotics/feed/",
     "TechCrunch Funding":           "https://techcrunch.com/category/fundings-exits/feed/",
-    "Bloomberg Technology":         "https://feeds.bloomberg.com/technology/news.rss",
-    "WSJ Tech":                     "https://feeds.a.dj.com/rss/RSSWSJD.xml",
-    "Forbes Innovation":            "https://www.forbes.com/innovation/feed/",
-    # テック企業（Physical AI関連）
+    "Crunchbase News":              "https://news.crunchbase.com/feed/",
+    # テック企業
     "NVIDIA Blog":                  "https://blogs.nvidia.com/feed/",
     "MIT Technology Review":        "https://www.technologyreview.com/feed/",
     "VentureBeat AI":               "https://venturebeat.com/ai/feed/",
+    "Ars Technica":                 "https://feeds.arstechnica.com/arstechnica/index",
     # 日本語メディア
     "ロボスタ":                     "https://robosta.net/feed/",
     "マイナビ ロボット":            "https://news.mynavi.jp/rss/techplus/robot/index_rss20.xml",
@@ -51,15 +61,25 @@ RSS_FEEDS = {
     "ITmedia AI+":                  "https://rss.itmedia.co.jp/rss/2.0/ait.xml",
 }
 
+SEARCH_QUERIES = [
+    "site:bloomberg.com humanoid robot robotics AI investment 2026",
+    "site:wsj.com robotics automation Physical AI 2026",
+    "site:forbes.com robotics humanoid robot funding 2026",
+    "site:asia.nikkei.com robot automation AI manufacturing 2026",
+    "humanoid robot funding acquisition partnership news 2026",
+    "Physical AI embodied AI startup investment 2026",
+    "Figure 1X Agility Apptronik Boston Dynamics robot news 2026",
+]
 
-def fetch_articles(hours: int = 24) -> list[dict]:
+
+def fetch_rss_articles(hours: int = 24) -> list[dict]:
     cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
     articles = []
 
     for source, url in RSS_FEEDS.items():
         try:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:15]:
+            for entry in feed.entries[:20]:
                 pub = None
                 if getattr(entry, "published_parsed", None):
                     pub = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
@@ -68,21 +88,46 @@ def fetch_articles(hours: int = 24) -> list[dict]:
                     continue
 
                 title = entry.get("title", "")
-                summary = entry.get("summary", entry.get("description", ""))[:600]
-                # HTMLタグ除去
-                summary = re.sub(r"<[^>]+>", "", summary)
+                summary = re.sub(r"<[^>]+>", "", entry.get("summary", entry.get("description", ""))[:600])
 
                 articles.append({
                     "source": source,
                     "title": title,
                     "link": entry.get("link", ""),
                     "summary": summary,
-                    "published": pub.isoformat() if pub else "",
                 })
         except Exception as e:
             log.warning(f"フィード取得エラー [{source}]: {e}")
 
-    log.info(f"{len(articles)} 件の記事を取得")
+    log.info(f"RSS: {len(articles)} 件取得")
+    return articles
+
+
+def fetch_web_articles() -> list[dict]:
+    articles = []
+    seen_urls = set()
+
+    try:
+        with DDGS() as ddgs:
+            for query in SEARCH_QUERIES:
+                try:
+                    for r in ddgs.text(query, max_results=5):
+                        url = r.get("href", "")
+                        if url in seen_urls:
+                            continue
+                        seen_urls.add(url)
+                        articles.append({
+                            "source": "Web Search",
+                            "title": r.get("title", ""),
+                            "link": url,
+                            "summary": r.get("body", "")[:500],
+                        })
+                except Exception as e:
+                    log.warning(f"検索エラー: {e}")
+    except Exception as e:
+        log.warning(f"Web検索全体エラー: {e}")
+
+    log.info(f"Web検索: {len(articles)} 件取得")
     return articles
 
 
@@ -98,7 +143,7 @@ def curate_and_summarize(articles: list[dict]) -> str:
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=3500,
+        max_tokens=4500,
         system=(
             "あなたはベンチャーキャピタル・経営層向けに「Physical AI デイリーニュース」を編集する専門家です。"
             "投資・事業開発・技術動向の観点から、経営判断に直結する情報を正確かつ簡潔な日本語でまとめてください。"
@@ -116,51 +161,47 @@ def curate_and_summarize(articles: list[dict]) -> str:
 ✅ Embedded AI（組み込みAI・エッジAI）
 ✅ Automation（産業・物流・医療・農業の自動化）
 
-【除外】以下は対象外：
-❌ 生成AI（ChatGPT、LLM、画像生成、テキスト生成など純粋なソフトウェアAI）
+【除外】
+❌ 生成AI（ChatGPT、LLM、画像生成など純粋なソフトウェアAI）
 ❌ Physical AIと無関係なソフトウェア・クラウド・サービス系ニュース
 
-【優先順位】以下の順で重要度を判定：
-1. 💰 投資・資金調達（ファンディングラウンド、金額、投資家）
+【優先順位】
+1. 💰 投資・資金調達
 2. 🤝 M&A・買収・合併・パートナーシップ
-3. 🚀 製品発表・技術ブレークスルー（商業インパクトが大きいもの）
+3. 🚀 製品発表・技術ブレークスルー
 4. 📊 市場動向・規制・業界再編
 
-以下の形式で日本語レポートを作成してください：
+【重要】合計10件前後のニュースを掲載すること。記事が多い場合は重要度順に選別。
+
+以下の形式で作成してください：
 
 ---
 # 🤖 Physical AI デイリーニュース｜{today_str}
 
 ## 💰 投資・M&A・パートナーシップ
-（該当ニュースがあれば最優先で掲載。なければこのセクションは省略）
+（該当があれば最優先。最大5件）
 
 ### 1. [日本語タイトル]
 - **メディア**: [ソース名]
-- **概要**: [何が起きたか。金額・企業名・規模を必ず明記。3文以内]
-- **インパクト**: [業界・市場への影響を1文]
+- **概要**: [金額・企業名・規模を明記。3文以内]
+- **インパクト**: [業界への影響1文]
 - 🔗 [URL]
 
 ---
 
-## 🚀 技術・製品ニュース
+## 🚀 技術・製品・事業ニュース
+（最大7件）
 
 ### 1. [日本語タイトル]
 - **メディア**: [ソース名]
-- **概要**: [技術的・商業的に何が重要か。3文以内]
-- **インパクト**: [なぜ重要かを1文]
+- **概要**: [3文以内]
+- **インパクト**: [1文]
 - 🔗 [URL]
-
-（各セクション最大5件まで）
-
----
-
-## 📌 その他の注目動向
-- **[タイトル]**（[ソース]）: [1文] 🔗 [URL]
 
 ---
 
 ## 📊 本日のまとめ
-[Physical AI業界全体のトレンドを4〜5文で。投資家・経営層が注目すべき点を中心に]
+[トレンドと経営層が注目すべき点を4〜5文で総括]
 
 ---
 *Physical AI News Agent | {today_str} 07:00 JST*"""
@@ -212,16 +253,19 @@ def send_email(subject: str, html: str, plain: str) -> None:
 def main() -> None:
     log.info("=== Physical AI News Agent 起動 ===")
 
-    # 月曜日は週末分（78時間）、火〜金は24時間
     today_jst = datetime.now(tz=JST)
     hours = 78 if today_jst.weekday() == 0 else 24
     log.info(f"取得期間: 過去{hours}時間（{['月','火','水','木','金','土','日'][today_jst.weekday()]}曜日）")
 
-    articles = fetch_articles(hours=hours)
+    rss_articles = fetch_rss_articles(hours=hours)
+    web_articles = fetch_web_articles()
+    articles = rss_articles + web_articles
+
     if not articles:
         log.error("記事が取得できませんでした")
         sys.exit(1)
 
+    log.info(f"合計: {len(articles)} 件")
     summary = curate_and_summarize(articles)
 
     today = datetime.now(tz=JST).strftime("%Y年%m月%d日")
