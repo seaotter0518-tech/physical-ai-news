@@ -146,6 +146,9 @@ def curate_and_summarize(articles: list[dict]) -> str:
         except Exception:
             return "日付不明"
 
+    # 記事IDと日付のマップを保持（後でPythonが注入するため）
+    date_map = {a["link"]: fmt_date(a.get("published", "")) for a in articles}
+
     articles_block = "\n\n".join(
         f"[{i+1}] 【{a['source']}】{a['title']}\n配信日: {fmt_date(a.get('published',''))}\nURL: {a['link']}\n概要: {a['summary']}"
         for i, a in enumerate(articles)
@@ -226,7 +229,18 @@ def curate_and_summarize(articles: list[dict]) -> str:
         }]
     )
 
-    return response.content[0].text
+    text = response.content[0].text
+
+    # URLを見つけたら直後に配信日をPythonが必ず注入する
+    def inject_date(m):
+        url = m.group(1)
+        date = date_map.get(url, "")
+        if date and date != "日付不明":
+            return f"🔗 {url}\n  📅 **配信日**: {date}"
+        return m.group(0)
+
+    text = re.sub(r"🔗 (https?://\S+)", inject_date, text)
+    return text
 
 
 def to_html(text: str) -> str:
