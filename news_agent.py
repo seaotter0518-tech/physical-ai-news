@@ -137,8 +137,17 @@ def fetch_web_articles() -> list[dict]:
 def curate_and_summarize(articles: list[dict]) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
+    def fmt_date(iso: str) -> str:
+        if not iso:
+            return "日付不明"
+        try:
+            dt = datetime.fromisoformat(iso).astimezone(JST)
+            return dt.strftime("%Y年%m月%d日")
+        except Exception:
+            return "日付不明"
+
     articles_block = "\n\n".join(
-        f"[{i+1}] 【{a['source']}】{a['title']}\nURL: {a['link']}\n概要: {a['summary']}"
+        f"[{i+1}] 【{a['source']}】{a['title']}\n配信日: {fmt_date(a.get('published',''))}\nURL: {a['link']}\n概要: {a['summary']}"
         for i, a in enumerate(articles)
     )
 
@@ -191,7 +200,7 @@ def curate_and_summarize(articles: list[dict]) -> str:
 （該当があれば最優先。最大5件）
 
 ### 1. [日本語タイトル]
-- **メディア**: [ソース名]
+- **メディア**: [ソース名]　**配信日**: [記事の配信日]
 - **概要**: [金額・企業名・規模を明記。3文以内]
 - **インパクト**: [業界への影響1文]
 - 🔗 [URL]
@@ -202,7 +211,7 @@ def curate_and_summarize(articles: list[dict]) -> str:
 （最大7件）
 
 ### 1. [日本語タイトル]
-- **メディア**: [ソース名]
+- **メディア**: [ソース名]　**配信日**: [記事の配信日]
 - **概要**: [3文以内]
 - **インパクト**: [1文]
 - 🔗 [URL]
